@@ -4,20 +4,21 @@ import { getWebviewOptions, getNonce } from "./functions";
 export default class ManimOutputPanel {
   public static currentPanel: ManimOutputPanel | undefined;
 
+  public sceneName: string;
+
   public static readonly viewType = 'manim-output';
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(extensionUri: vscode.Uri) {
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
+  public static createOrShow(extensionUri: vscode.Uri, args: any) {
 
     // If we already have a panel, show it.
     if (ManimOutputPanel.currentPanel) {
-      ManimOutputPanel.currentPanel._panel.reveal(column);
+      ManimOutputPanel.currentPanel._panel.reveal(vscode.ViewColumn.Beside);
+      ManimOutputPanel.currentPanel.sceneName = args;
+      ManimOutputPanel.currentPanel.update();
       return;
     }
 
@@ -29,19 +30,16 @@ export default class ManimOutputPanel {
       getWebviewOptions(),
     );
 
-    ManimOutputPanel.currentPanel = new ManimOutputPanel(panel, extensionUri);
+    ManimOutputPanel.currentPanel = new ManimOutputPanel(panel, extensionUri, args);
   }
 
-  public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
-    ManimOutputPanel.currentPanel = new ManimOutputPanel(panel, extensionUri);
-  }
-
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, args: string) {
     this._panel = panel;
     this._extensionUri = extensionUri;
 
     // Set the webview's initial html content
-    this._update();
+    this.sceneName = args;
+    this.update();
 
     // Listen for when the panel is disposed
     // This happens when the user closes the panel or when the panel is closed programatically
@@ -51,7 +49,7 @@ export default class ManimOutputPanel {
     this._panel.onDidChangeViewState(
       e => {
         if (this._panel.visible) {
-          this._update();
+          this.update();
         }
       },
       null,
@@ -92,32 +90,14 @@ export default class ManimOutputPanel {
     }
   }
 
-  private _update() {
+
+  update() {
+    this._panel.title = "Manim output - " + this.sceneName;
     const webview = this._panel.webview;
-
-    // Vary the webview's content based on where it is located in the editor.
-    switch (this._panel.viewColumn) {
-      case vscode.ViewColumn.Two:
-        // this._updateForCat(webview, 'Compiling Cat');
-        return;
-
-      case vscode.ViewColumn.Three:
-        // this._updateForCat(webview, 'Testing Cat');
-        return;
-
-      case vscode.ViewColumn.One:
-      default:
-        // this._updateForCat(webview, 'Coding Cat');
-        return;
-    }
+    this._panel.webview.html = this._getHtmlForWebview(webview);
   }
 
-  // private _updateForCat(webview: vscode.Webview, catName: keyof typeof cats) {
-  //   this._panel.title = catName;
-  //   this._panel.webview.html = this._getHtmlForWebview(webview, cats[catName]);
-  // }
-
-  private _getHtmlForWebview(webview: vscode.Webview, catGifPath: string) {
+  private _getHtmlForWebview(webview: vscode.Webview) {
     // Local path to main script run in the webview
     const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'media', 'main.js');
 
@@ -132,6 +112,12 @@ export default class ManimOutputPanel {
     const stylesResetUri = webview.asWebviewUri(styleResetPath);
     const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
 
+    const fileName = vscode.window.activeTextEditor!.document.fileName;
+
+    const gif = vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, 'media', 'videos', fileName.split("\\").pop()!.split(".").slice(0, -1).join("."), "1080p60", this.sceneName + ".gif");
+
+    const gifUrl = webview.asWebviewUri(gif);
+
     // Use a nonce to only allow specific scripts to be run
     const nonce = getNonce();
 
@@ -144,20 +130,19 @@ export default class ManimOutputPanel {
 					Use a content security policy to only allow loading images from https or from our extension directory,
 					and only allow scripts that have a specific nonce.
 				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource} https:;">
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<!--
 				<link href="${stylesResetUri}" rel="stylesheet">
-				<link href="${stylesMainUri}" rel="stylesheet">
+				<link href="${stylesMainUri}" rel="stylesheet">-->
 
 				<title>Cat Coding</title>
 			</head>
 			<body>
-				<img src="${catGifPath}" width="300" />
-				<h1 id="lines-of-code-counter">0</h1>
-
-				<script nonce="${nonce}" src="${scriptUri}"></script>
+        <h1>${this.sceneName}</h1>
+        <img src="${gifUrl}"></img>
+			<!--	<script nonce="${nonce}" src="${scriptUri}"></script> -->
 			</body>
 			</html>`;
   }
