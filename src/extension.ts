@@ -28,8 +28,14 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('manim.codelensAction', (args) => {
       const fileName = vscode.window.activeTextEditor!.document.fileName;
-      cmd.generate(fileName, args, "gif");
-      const gif = vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, 'media', 'videos', fileName.split("/").pop()!.split(".").slice(0, -1).join("."), "1080p60", args + ".gif");
+      const runCommand = () => cmd.generate(fileName, args, "gif");
+      runCommand();
+      const gif = vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, 'media', 'videos', fileName.split("\\").pop()!.split(".").slice(0, -1).join("."), "1080p60", args + ".gif");
+      vscode.workspace.onDidSaveTextDocument(e => {
+        if (e.fileName === fileName) {
+          runCommand();
+        }
+      });
       const watch = vscode.workspace.createFileSystemWatcher(gif.toString());
       watch.onDidChange(e => {
         ManimOutputPanel.currentPanel?.update();
