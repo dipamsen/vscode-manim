@@ -1,4 +1,4 @@
-# This project is not maintained, and is not published to the VSCode Marketplace. Use ![Rickaym/Manim-Sideview](https://github.com/Rickaym/Manim-Sideview) instead.
+# This project is not maintained, and is not published to the VSCode Marketplace. Use [Rickaym/Manim-Sideview](https://github.com/Rickaym/Manim-Sideview) instead.
 
 ----
 
